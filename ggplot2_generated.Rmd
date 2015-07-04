@@ -1,0 +1,91 @@
+---
+title: "ggplot2: Table of Required Aes and Generated Variables"
+author: "Hiroaki Yutani"
+date: "2015年6月26日"
+output: html_document
+---
+
+```{r child="children/chunk_options.Rmd"}
+```
+
+```{r}
+library(dplyr)
+library(magrittr)
+library(rlist)
+library(ggplot2)
+library(stringr)
+
+packageVersion("ggplot2")
+
+# 適当なデータをつっこんで、生成される変数名を返す関数
+get_generated_variables <- function(stat_func){
+  
+  dummy_data <- data.frame(a = 1:25,
+                           x_grid = rep(1:5, 5),
+                           y_grid = rep(1:5, each = 5),
+                           z_grid = 1:25 %% 3)
+  
+  stat_obj <- stat_func()
+  required_aes <- stat_obj$stat$required_aes
+  
+  dummy_aes_args <- list()
+  dummy_aes_args[required_aes] <- "a"
+  if (stat_obj$stat$objname == "contour") {
+    dummy_aes_args["x"] <- "x_grid"
+    dummy_aes_args["y"] <- "y_grid"
+    dummy_aes_args["z"] <- "z_grid"
+  } else if (stat_obj$stat$objname == "ellipse")  {
+    dummy_aes_args["y"] <- "y_grid"
+  }
+  
+  dummy_aes <- do.call(aes_string, dummy_aes_args)
+  
+  nms <- 
+    (ggplot(data = dummy_data, mapping = dummy_aes) + stat_obj) %>%
+    ggplot_build %>%
+    use_series(data) %>%
+    extract2(1) %>%
+    names
+  
+  setdiff(nms, c(required_aes, "PANEL"))
+}
+
+# main --------------------------------------------------------------------------------
+
+# stat_XXXという名前の関数を取得
+### stat_function, stat_vline, stat_hlineはそれぞれデフォルトで指定しなければいけない引数があるので取り除く
+stat_funcs <- ls('package:ggplot2', pattern = "^stat_.+") %>%
+  extract({is_in(., c("stat_function", "stat_hline", "stat_vline")) %>% `n'est pas`}) %>%
+  list.map(get(., envir = asNamespace('ggplot2')))
+
+# 必要なマッピング
+required_aes <-
+  stat_funcs %>%
+  list.map(.()$stat$required_aes) %>%
+  list.map(inset(list(), ., "★"))
+
+# 計算される変数
+generated_variables <-
+  stat_funcs %>%
+  list.map(get_generated_variables(.)) %>%
+  list.map(inset(list(), ., "○"))
+
+# 結果をマージ
+merged <- list.maps(
+  plyr::defaults(..1, ..2),
+  generated_variables,
+  required_aes) %>%
+  list.map(as_data_frame(.)) %>%
+  bind_rows
+```
+
+```{r results="asis"}
+# 見やすいようにNAには空文字を入れる
+merged[is.na(merged)] <- ""
+
+merged <- merged[,sort(colnames(merged))]
+rownames(merged) <- str_replace(names(stat_funcs), "stat_", "")
+
+library(xtable)
+print(xtable(t(merged)), type = "html")
+```

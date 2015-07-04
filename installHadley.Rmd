@@ -1,0 +1,31 @@
+---
+title: "installHadley()"
+author: "Hiroaki Yutani"
+date: "2015年6月10日"
+output: html_document
+---
+
+```{r child="children/chunk_options.Rmd"}
+```
+
+This is a spike to install all packages recognized as "Hadleyverse"
+
+Metacran has very useful API: https://github.com/metacran/crandb#the-raw-api
+
+```{r}
+library(jsonlite)
+
+db <- fromJSON("http://crandb.r-pkg.org/-/latest")
+hadley_pkgidx <- lapply(db, function(x) grepl("hadley", x$Author, ignore.case = TRUE))
+hadley_pkgnames <- names(db)[unlist(hadley_pkgidx)]
+
+hadley_pkgnames
+```
+
+Then, install.
+
+```{r, eval = FALSE}
+install.packages(hadley_pkgnames)
+```
+
+But I think this is too many. Obviously, we need curated-`installHadley()`...
