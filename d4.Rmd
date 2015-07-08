@@ -1,0 +1,20 @@
+---
+title: "d4"
+author: "Hiroaki Yutani"
+date: "2015年7月9日"
+output: html_document
+---
+
+d4 library: http://visible.io/index.html
+
+```{r, message=FALSE}
+devtools::install_github("yutannihilation/DfouR")
+```
+
+```{r}
+library(DfouR)
+set.seed(23)
+
+a <- data.frame(x = 1:10, y = runif(10))
+d4(a)
+```
