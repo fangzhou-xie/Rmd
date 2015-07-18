@@ -145,7 +145,7 @@ unlist(lapply(c(a2, b2), charToRaw))</code></pre>
 <li>適切な文字コードが設定されているとき</li>
 <li>文字コードが設定されてない（<code>unknown</code>）けどデフォルトの文字コード（Windowsの場合はShift_JIS）と同じとき</li>
 </ol>
-<p>にうまくいく。そうでないとうまくいかない。</p>
+<p>にうまくいくっぽい。そうでないとうまくいかないっぽい。（あんまりちゃんと調べてない）</p>
 <pre class="r"><code>b &lt;- c &lt;- &quot;あ&quot;
 Encoding(b) &lt;- &quot;UTF-8&quot;
 Encoding(c) &lt;- &quot;bytes&quot;
@@ -187,7 +187,7 @@ stri_pad(&quot;あ&quot;, width = 1)</code></pre>
 </div>
 <div class="section level2">
 <h2>個人的な結論</h2>
-<p>とりあえず、Windowsであっても、適切な<code>Encoding</code>を設定しとけば困らないのでは？という気がしました。</p>
+<p>とりあえず、Windowsの場合は、適切な<code>Encoding</code>を設定することを心掛ければ回避できる問題もあるのかも。</p>
 </div>
 
 <script type="text/javascript" src="libs/fluidbox/jquery.fluidbox.min.js"></script>
