@@ -8,9 +8,10 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 
+<meta name="author" content="Hiroaki Yutani" />
 
 
-<title>Index</title>
+<title>stringiとWindowsと文字コードとかそのへんのメモ</title>
 
 <script src="libs/jquery-1.11.0/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -71,16 +72,123 @@ img {
 
 
 <div id="header">
-<h1 class="title">Index</h1>
+<h1 class="title">stringiとWindowsと文字コードとかそのへんのメモ</h1>
+<h4 class="author"><em>Hiroaki Yutani</em></h4>
+<h4 class="date"><em>2015年7月17日</em></h4>
 </div>
 
 
-<ul>
-<li>2015-07-04 16:22:59 <a href="installHadley.html" class="uri">installHadley.html</a></li>
-<li>2015-07-04 16:23:44 <a href="ggplot2_generated.html" class="uri">ggplot2_generated.html</a></li>
-<li>2015-07-09 00:31:08 <a href="d4.html" class="uri">d4.html</a></li>
-<li>2015-07-18 11:53:20 <a href="stringi_encode.html" class="uri">stringi_encode.html</a></li>
-</ul>
+<p><span class="citation">@yamano357さんの</span><a href="http://rpubs.com/yamano357/92478">{stringr}/{stringi}とbaseの文字列処理について</a>でちらっと私のRpubsが言及されてたので、触発されてちょっとメモ</p>
+<pre class="r"><code>library(stringi)</code></pre>
+<div class="section level2">
+<h2>環境</h2>
+<p>Windowsです。</p>
+<pre class="r"><code>stri_enc_get()</code></pre>
+<pre><code>## [1] &quot;Shift_JIS&quot;</code></pre>
+<pre class="r"><code>Sys.getlocale()</code></pre>
+<pre><code>## [1] &quot;LC_COLLATE=Japanese_Japan.932;LC_CTYPE=Japanese_Japan.932;LC_MONETARY=Japanese_Japan.932;LC_NUMERIC=C;LC_TIME=Japanese_Japan.932&quot;</code></pre>
+</div>
+<div id="r" class="section level2">
+<h2>まずRの挙動を確かめる</h2>
+<p>文字コードを変えると文字化けしているように見えたりするけど、中身は変わってない。</p>
+<pre class="r"><code>a &lt;- b &lt;- c &lt;- &quot;あ&quot;
+Encoding(b) &lt;- &quot;UTF-8&quot;
+Encoding(c) &lt;- &quot;bytes&quot;
+
+unlist(lapply(c(a,b,c), Encoding))</code></pre>
+<pre><code>## [1] &quot;unknown&quot; &quot;UTF-8&quot;   &quot;bytes&quot;</code></pre>
+<pre class="r"><code># 表示のされ方は違うけど、、
+cat(a)</code></pre>
+<pre><code>## あ</code></pre>
+<pre class="r"><code>cat(b)</code></pre>
+<pre><code>## &lt;U+0082&gt;&lt;U+00A0&gt;</code></pre>
+<pre class="r"><code>cat(c)</code></pre>
+<pre><code>## \x82\xa0</code></pre>
+<pre class="r"><code># 中身のバイト列としては変わってない
+unlist(lapply(c(a,b,c), charToRaw))</code></pre>
+<pre><code>## [1] 82 a0 82 a0 82 a0</code></pre>
+<p>UTF-8で入力してみる</p>
+<pre class="r"><code>a &lt;- b &lt;- &quot;\xe3\x81\x82&quot;
+Encoding(b) &lt;- &quot;UTF-8&quot;
+
+unlist(lapply(c(a,b), Encoding))</code></pre>
+<pre><code>## [1] &quot;unknown&quot; &quot;UTF-8&quot;</code></pre>
+<pre class="r"><code># これをやると「Error: invalid multibyte string at &#39;&lt;82&gt;&#39;」というエラーでknitできないのでコメントアウトしてるけど、文字化けする
+# cat(a)
+
+# Encodingを設定した方はちゃんと表示できる
+cat(b)</code></pre>
+<pre><code>## あ</code></pre>
+<pre class="r"><code># 中身のバイト列としては変わってない
+unlist(lapply(c(a,b), charToRaw))</code></pre>
+<pre><code>## [1] e3 81 82 e3 81 82</code></pre>
+</div>
+<div id="stringi" class="section level2">
+<h2>stringiとのやり取りをする時の変換</h2>
+<p>UTF-8の文字とShift_JISの文字を渡してみる</p>
+<pre class="r"><code>a &lt;- &quot;あ&quot;
+b &lt;- iconv(&quot;あ&quot;, from = &quot;Shift_JIS&quot;, to = &quot;UTF-8&quot;)
+
+# stri_padは指定した文字数になるように空白を詰める。つまりwidthが1だとなにもしない
+a2 &lt;- stri_pad(a, width = 1)
+b2 &lt;- stri_pad(b, width = 1)
+
+# 返ってきた文字列は、いずれもUTF-8になる
+unlist(lapply(c(a2, b2), Encoding))</code></pre>
+<pre><code>## [1] &quot;UTF-8&quot; &quot;UTF-8&quot;</code></pre>
+<pre class="r"><code># 中身のバイト列も、UTF-8になっている
+unlist(lapply(c(a2, b2), charToRaw))</code></pre>
+<pre><code>## [1] e3 81 82 e3 81 82</code></pre>
+<p>つまり、Rからstringiに渡す時にUTF-8に変換されて、その変換されたものがそのまま返ってくるということ。</p>
+<p>UTF-8への変換は、その文字オブジェクト（って言うの？）が</p>
+<ol style="list-style-type: decimal">
+<li>適切な文字コードが設定されているとき</li>
+<li>文字コードが設定されてない（<code>unknown</code>）けどデフォルトの文字コード（Windowsの場合はShift_JIS）と同じとき</li>
+</ol>
+<p>にうまくいく。そうでないとうまくいかない。</p>
+<pre class="r"><code>b &lt;- c &lt;- &quot;あ&quot;
+Encoding(b) &lt;- &quot;UTF-8&quot;
+Encoding(c) &lt;- &quot;bytes&quot;
+
+stri_pad(b, width = 1)</code></pre>
+<pre><code>## Error in stri_pad_left(str, width, pad, use_length): invalid UTF-8 byte sequence detected. perhaps you should try calling stri_enc_toutf8()</code></pre>
+<pre class="r"><code>stri_pad(c, width = 1)</code></pre>
+<pre><code>## Error in stri_pad_left(str, width, pad, use_length): bytes encoding is not supported by this function</code></pre>
+<p>strinigiは元の文字コードを、<code>stri_enc_get()</code>で返ってくる文字コードだと仮定して動作する。なので、それを変えてやることもできる（推奨はされてない）</p>
+<pre class="r"><code>a &lt;- &quot;\xe3\x81\x82&quot;
+
+# stri_enc_isutf8はR側の文字コード設定に関係なく動作する。
+# 逆にいうと、これがTRUEだからといって自動でUTF-8として扱われたりはしない
+stri_enc_isutf8(a)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code># Shift_JIS -&gt; UTF-8だと思って変換するので文字化けする
+stri_pad(a, width = 1)</code></pre>
+<pre><code>## [1] &quot;縺\032&quot;</code></pre>
+<pre class="r"><code># UTF-8にする
+previous_enc &lt;- stri_enc_set(&quot;UTF-8&quot;)</code></pre>
+<pre><code>## You are now working with stringi_0.5.5 (ja_JP.UTF-8; ICU4C 55.1 [bundle]; Unicode 7.0)</code></pre>
+<pre class="r"><code># 今度はうまくいく...かと思いきや、なぜかEncodingが設定されなくなってて文字化けする
+a2 &lt;- stri_pad(a, width = 1)
+Encoding(a2)</code></pre>
+<pre><code>## [1] &quot;unknown&quot;</code></pre>
+<pre class="r"><code># Encodingを設定すればうまくいくけど、それはそうでしょ、という感じ。
+Encoding(a2) &lt;- &quot;UTF-8&quot;
+
+# 逆にShift_JISの文字はダメ
+stri_pad(&quot;あ&quot;, width = 1)</code></pre>
+<pre><code>## Error in stri_pad_left(str, width, pad, use_length): invalid UTF-8 byte sequence detected. perhaps you should try calling stri_enc_toutf8()</code></pre>
+<pre class="r"><code>stri_enc_set(previous_enc)</code></pre>
+<pre><code>## Warning in stri_enc_set(previous_enc): This converter alias can go to
+## different converter implementations. (U_AMBIGUOUS_ALIAS_WARNING)</code></pre>
+<pre><code>## Warning in stri_info(short = TRUE): Your native charset is not a superset
+## of US-ASCII. This may cause serious problems. Consider switching to UTF-8.</code></pre>
+<pre><code>## You are now working with stringi_0.5.5 (ja_JP.Shift_JIS; ICU4C 55.1 [bundle]; Unicode 7.0)</code></pre>
+<p>よく分からないので触らないのが吉。</p>
+</div>
+<div class="section level2">
+<h2>個人的な結論</h2>
+<p>とりあえず、Windowsであっても、適切な<code>Encoding</code>を設定しとけば困らないのでは？という気がしました。</p>
+</div>
 
 <script type="text/javascript" src="libs/fluidbox/jquery.fluidbox.min.js"></script>
 <script type="text/javascript" src="include/js/enable-fluidbox.js"></script>

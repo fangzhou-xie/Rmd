@@ -1,0 +1,131 @@
+---
+title: "stringiとWindowsと文字コードとかそのへんのメモ"
+author: "Hiroaki Yutani"
+date: "2015年7月17日"
+output: html_document
+---
+
+@yamano357さんの[{stringr}/{stringi}とbaseの文字列処理について](http://rpubs.com/yamano357/92478)でちらっと私のRpubsが言及されてたので、触発されてちょっとメモ
+
+```{r}
+library(stringi)
+```
+
+## 環境
+
+Windowsです。
+
+```{r}
+stri_enc_get()
+Sys.getlocale()
+```
+
+## まずRの挙動を確かめる
+
+文字コードを変えると文字化けしているように見えたりするけど、中身は変わってない。
+
+```{r}
+a <- b <- c <- "あ"
+Encoding(b) <- "UTF-8"
+Encoding(c) <- "bytes"
+
+unlist(lapply(c(a,b,c), Encoding))
+
+# 表示のされ方は違うけど、、
+cat(a)
+cat(b)
+cat(c)
+
+# 中身のバイト列としては変わってない
+unlist(lapply(c(a,b,c), charToRaw))
+```
+
+UTF-8で入力してみる
+
+```{r}
+a <- b <- "\xe3\x81\x82"
+Encoding(b) <- "UTF-8"
+
+unlist(lapply(c(a,b), Encoding))
+
+# これをやると「Error: invalid multibyte string at '<82>'」というエラーでknitできないのでコメントアウトしてるけど、文字化けする
+# cat(a)
+
+# Encodingを設定した方はちゃんと表示できる
+cat(b)
+
+# 中身のバイト列としては変わってない
+unlist(lapply(c(a,b), charToRaw))
+```
+
+## stringiとのやり取りをする時の変換
+
+UTF-8の文字とShift_JISの文字を渡してみる
+
+```{r}
+a <- "あ"
+b <- iconv("あ", from = "Shift_JIS", to = "UTF-8")
+
+# stri_padは指定した文字数になるように空白を詰める。つまりwidthが1だとなにもしない
+a2 <- stri_pad(a, width = 1)
+b2 <- stri_pad(b, width = 1)
+
+# 返ってきた文字列は、いずれもUTF-8になる
+unlist(lapply(c(a2, b2), Encoding))
+
+# 中身のバイト列も、UTF-8になっている
+unlist(lapply(c(a2, b2), charToRaw))
+```
+
+つまり、Rからstringiに渡す時にUTF-8に変換されて、その変換されたものがそのまま返ってくるということ。
+
+UTF-8への変換は、その文字オブジェクト（って言うの？）が 
+
+1. 適切な文字コードが設定されているとき
+2. 文字コードが設定されてない（`unknown`）けどデフォルトの文字コード（Windowsの場合はShift_JIS）と同じとき
+
+にうまくいく。そうでないとうまくいかない。
+
+```{r, error=TRUE}
+b <- c <- "あ"
+Encoding(b) <- "UTF-8"
+Encoding(c) <- "bytes"
+
+stri_pad(b, width = 1)
+stri_pad(c, width = 1)
+```
+
+strinigiは元の文字コードを、`stri_enc_get()`で返ってくる文字コードだと仮定して動作する。なので、それを変えてやることもできる（推奨はされてない）
+
+```{r, error=TRUE}
+a <- "\xe3\x81\x82"
+
+# stri_enc_isutf8はR側の文字コード設定に関係なく動作する。
+# 逆にいうと、これがTRUEだからといって自動でUTF-8として扱われたりはしない
+stri_enc_isutf8(a)
+
+# Shift_JIS -> UTF-8だと思って変換するので文字化けする
+stri_pad(a, width = 1)
+
+# UTF-8にする
+previous_enc <- stri_enc_set("UTF-8")
+
+# 今度はうまくいく...かと思いきや、なぜかEncodingが設定されなくなってて文字化けする
+a2 <- stri_pad(a, width = 1)
+Encoding(a2)
+
+# Encodingを設定すればうまくいくけど、それはそうでしょ、という感じ。
+Encoding(a2) <- "UTF-8"
+
+# 逆にShift_JISの文字はダメ
+stri_pad("あ", width = 1)
+
+stri_enc_set(previous_enc)
+```
+
+よく分からないので触らないのが吉。
+
+
+## 個人的な結論
+
+とりあえず、Windowsであっても、適切な`Encoding`を設定しとけば困らないのでは？という気がしました。

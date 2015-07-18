@@ -1,3 +1,26 @@
 pre code, p code {
   font-family: 'Source Code Pro', monospace;
 }
+
+.main-container {
+  padding-top: 3em;
+  padding-bottom: 7em;
+}
+
+div.section.level2 {
+  margin-top: 3em;
+}
+
+div.section.level3 {
+  margin-top: 2em;
+}
+
+div.section p {
+  margin-top: 1em;
+  margin-bottom: 1.5em;
+}
+
+h1, .h1, h2, .h2, h3, .h3 {
+    margin-top: 20px;
+    margin-bottom: 0.7em;
+}
