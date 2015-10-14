@@ -1,0 +1,75 @@
+---
+title: "geom_density() Ignores Alpha For Line"
+author: "Hiroaki Yutani"
+date: "2015年10月15日"
+output: html_document
+---
+
+```{r child="children/chunk_options.Rmd"}
+```
+
+元のグラフはこんな感じ。
+
+```{r}
+knitr::opts_chunk$set(message = FALSE)
+
+set.seed(71)
+
+library(ggplot2)
+x <- data.frame(price = rnorm(10000, mean = 6000, sd = 1000))
+p <- ggplot(x, aes(x=price,y= ..density..))
+
+p +
+  geom_histogram(alpha = 0.3, binwidth=500, fill="red")+
+  geom_density(aes(colour="red",fill="red"), alpha=0.1, size=1.5) +
+  ggthemes::theme_solarized()
+```
+
+でもこれは、`aes()`の中が`"blue"`でも`"green"`でもこの色になる。たまたまデフォルトの色が赤っぽいだけ。
+
+```{r}
+p +
+  geom_histogram(alpha = 0.3, binwidth=500, fill="red") +
+  geom_density(aes(colour="blue",fill="green"), alpha=0.1, size=1.5) +
+  ggthemes::theme_solarized()
+```
+
+なぜこんなことをするかというと、`alpha`の効き方が`geom_histogram()`と`geom_density()`で違っていて、
+`geom_density()`は線の透明度を変えてくれないから。
+`alpha=0.3`の赤に近い色に`geom_density()`の`colour`を変えている。`alpha`ではなくて。
+
+```{r}
+h <- lapply(0.1 * 1:9, function(a) p + geom_histogram(alpha = a, binwidth=500, fill="red") + ggtitle(a))
+do.call(gridExtra::grid.arrange, h)
+```
+
+```{r}
+d <- lapply(0.1 * 1:9, function(a) p + geom_density(alpha = a, size=1.5, fill="red", colour="red") + ggtitle(a))
+do.call(gridExtra::grid.arrange, d)
+```
+
+で、たぶん正解は線を引くのに`geom_density()`を使わないことで、`geom_freqpoly()`とか`geom_line(stat = "density")`を使えば似たようなのができる。
+
+```{r}
+p +
+  geom_histogram(alpha=0.3, fill="red") +
+  geom_freqpoly(colour="red", alpha=0.3, size=1.5) +
+  ggthemes::theme_solarized()
+```
+
+```{r}
+p +
+  geom_histogram(alpha=0.3, fill="red") +
+  geom_line(stat = "density", colour="red", alpha=0.3, size=1.5) +
+  ggthemes::theme_solarized()
+```
+
+ただし、`geom_freqpoly()`とか`geom_line()`に`fill`は設定できないので、それがほしければ線なしの`geom_density()`を重ねる。
+
+```{r}
+p +
+  geom_histogram(alpha=0.3, fill="red") +
+  geom_line(stat = "density", colour="red", alpha=0.3, size=1.5) +
+  geom_density(colour = "transparent", fill="red", alpha=0.3)+
+  ggthemes::theme_solarized()
+```

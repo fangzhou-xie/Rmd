@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="author" content="Hiroaki Yutani" />
+
+
+<title>geom_density() Ignores Alpha For Line</title>
+
+<script src="libs/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.1/css/bootstrap.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/respond.min.js"></script>
+<link href='libs/fluidbox/css/fluidbox.css' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
+<link href='include/css/style.css' rel='stylesheet' type='text/css'>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/default.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img { 
+  max-width:100%; 
+  height: auto; 
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div id="header">
+<h1 class="title">geom_density() Ignores Alpha For Line</h1>
+<h4 class="author"><em>Hiroaki Yutani</em></h4>
+<h4 class="date"><em>2015年10月15日</em></h4>
+</div>
+
+
+<p>元のグラフはこんな感じ。</p>
+<pre class="r"><code>knitr::opts_chunk$set(message = FALSE)
+
+set.seed(71)
+
+library(ggplot2)
+x &lt;- data.frame(price = rnorm(10000, mean = 6000, sd = 1000))
+p &lt;- ggplot(x, aes(x=price,y= ..density..))
+
+p +
+  geom_histogram(alpha = 0.3, binwidth=500, fill=&quot;red&quot;)+
+  geom_density(aes(colour=&quot;red&quot;,fill=&quot;red&quot;), alpha=0.1, size=1.5) +
+  ggthemes::theme_solarized()</code></pre>
+<p><img src="figures//geom_density_files/figure-htmlunnamed-chunk-2-1.png" title="" alt="" width="672" /></p>
+<p>でもこれは、<code>aes()</code>の中が<code>&quot;blue&quot;</code>でも<code>&quot;green&quot;</code>でもこの色になる。たまたまデフォルトの色が赤っぽいだけ。</p>
+<pre class="r"><code>p +
+  geom_histogram(alpha = 0.3, binwidth=500, fill=&quot;red&quot;) +
+  geom_density(aes(colour=&quot;blue&quot;,fill=&quot;green&quot;), alpha=0.1, size=1.5) +
+  ggthemes::theme_solarized()</code></pre>
+<p><img src="figures//geom_density_files/figure-htmlunnamed-chunk-3-1.png" title="" alt="" width="672" /></p>
+<p>なぜこんなことをするかというと、<code>alpha</code>の効き方が<code>geom_histogram()</code>と<code>geom_density()</code>で違っていて、 <code>geom_density()</code>は線の透明度を変えてくれないから。 <code>alpha=0.3</code>の赤に近い色に<code>geom_density()</code>の<code>colour</code>を変えている。<code>alpha</code>ではなくて。</p>
+<pre class="r"><code>h &lt;- lapply(0.1 * 1:9, function(a) p + geom_histogram(alpha = a, binwidth=500, fill=&quot;red&quot;) + ggtitle(a))
+do.call(gridExtra::grid.arrange, h)</code></pre>
+<p><img src="figures//geom_density_files/figure-htmlunnamed-chunk-4-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>d &lt;- lapply(0.1 * 1:9, function(a) p + geom_density(alpha = a, size=1.5, fill=&quot;red&quot;, colour=&quot;red&quot;) + ggtitle(a))
+do.call(gridExtra::grid.arrange, d)</code></pre>
+<p><img src="figures//geom_density_files/figure-htmlunnamed-chunk-5-1.png" title="" alt="" width="672" /></p>
+<p>で、たぶん正解は線を引くのに<code>geom_density()</code>を使わないことで、<code>geom_freqpoly()</code>とか<code>geom_line(stat = &quot;density&quot;)</code>を使えば似たようなのができる。</p>
+<pre class="r"><code>p +
+  geom_histogram(alpha=0.3, fill=&quot;red&quot;) +
+  geom_freqpoly(colour=&quot;red&quot;, alpha=0.3, size=1.5) +
+  ggthemes::theme_solarized()</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="figures//geom_density_files/figure-htmlunnamed-chunk-6-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>p +
+  geom_histogram(alpha=0.3, fill=&quot;red&quot;) +
+  geom_line(stat = &quot;density&quot;, colour=&quot;red&quot;, alpha=0.3, size=1.5) +
+  ggthemes::theme_solarized()</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="figures//geom_density_files/figure-htmlunnamed-chunk-7-1.png" title="" alt="" width="672" /></p>
+<p>ただし、<code>geom_freqpoly()</code>とか<code>geom_line()</code>に<code>fill</code>は設定できないので、それがほしければ線なしの<code>geom_density()</code>を重ねる。</p>
+<pre class="r"><code>p +
+  geom_histogram(alpha=0.3, fill=&quot;red&quot;) +
+  geom_line(stat = &quot;density&quot;, colour=&quot;red&quot;, alpha=0.3, size=1.5) +
+  geom_density(colour = &quot;transparent&quot;, fill=&quot;red&quot;, alpha=0.3)+
+  ggthemes::theme_solarized()</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="figures//geom_density_files/figure-htmlunnamed-chunk-8-1.png" title="" alt="" width="672" /></p>
+
+<script type="text/javascript" src="libs/fluidbox/jquery.fluidbox.min.js"></script>
+<script type="text/javascript" src="include/js/enable-fluidbox.js"></script>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+
+</body>
+</html>
