@@ -121,6 +121,18 @@ do.call(gridExtra::grid.arrange, d)</code></pre>
   ggthemes::theme_solarized()</code></pre>
 <pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
 <p><img src="figures//geom_density_files/figure-htmlunnamed-chunk-8-1.png" title="" alt="" width="672" /></p>
+<hr />
+<div class="section level3">
+<h3>追記</h3>
+<p><code>alpha(&quot;色&quot;, 透明度)</code>を指定するという手があるらしい。</p>
+<pre class="r"><code>p +
+  geom_histogram(alpha=0.3, fill=&quot;red&quot;) +
+  geom_line(stat = &quot;density&quot;, colour=&quot;red&quot;, alpha=0.3, size=1.5) +
+  geom_density(fill=alpha(&quot;red&quot;, 0.3), colour=alpha(&quot;red&quot;, 0.3)) +
+  ggthemes::theme_solarized()</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="figures//geom_density_files/figure-htmlunnamed-chunk-9-1.png" title="" alt="" width="672" /></p>
+</div>
 
 <script type="text/javascript" src="libs/fluidbox/jquery.fluidbox.min.js"></script>
 <script type="text/javascript" src="include/js/enable-fluidbox.js"></script>

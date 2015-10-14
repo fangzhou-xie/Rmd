@@ -73,3 +73,17 @@ p +
   geom_density(colour = "transparent", fill="red", alpha=0.3)+
   ggthemes::theme_solarized()
 ```
+
+--------------------------
+
+### 追記
+
+`alpha("色", 透明度)`を指定するという手があるらしい。
+
+```{r}
+p +
+  geom_histogram(alpha=0.3, fill="red") +
+  geom_line(stat = "density", colour="red", alpha=0.3, size=1.5) +
+  geom_density(fill=alpha("red", 0.3), colour=alpha("red", 0.3)) +
+  ggthemes::theme_solarized()
+```
