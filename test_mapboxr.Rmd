@@ -1,0 +1,31 @@
+---
+title: "Embed Mapbox in R Markdown"
+author: "Hiroaki Yutani"
+date: "2015年10月20日"
+output: html_document
+---
+
+```{r child="children/chunk_options.Rmd"}
+```
+
+Repo is here: https://github.com/yutannihilation/mapboxr
+
+## Install
+
+```{r eval=FALSE}
+devtools::install_github("yutannihilation/mapboxr")
+```
+
+## Usage
+
+You need these info to embed your Mapbox:
+
+1. map ID
+2. public access token (which you can generate at https://www.mapbox.com/account/apps/)
+
+```{r cache=FALSE}
+mapboxr::mapbox(
+  map_id = "yutannihilation.jg4m3m49",
+  access_token = "pk.eyJ1IjoieXV0YW5uaWhpbGF0aW9uIiwiYSI6IjBrSjdCV2sifQ.NZ6DBjF5iMN7sss8dXqIdA"
+  )
+```
